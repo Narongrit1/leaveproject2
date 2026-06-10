@@ -1,0 +1,16 @@
+<?php
+require_once __DIR__ . '/includes/auth.php';
+require_login();
+enforce_password_change();
+
+$id = (int)($_GET['id'] ?? 0);
+$row = fetch_one('SELECT * FROM attendance_requests WHERE id = ?', [$id]);
+if (!$row || (int)$row['user_id'] !== (int)$_SESSION['user']['id'] || !in_array($row['status'], ['draft','pending_head','pending_dean'], true)) {
+    http_response_code(403);
+    exit('Forbidden');
+}
+execute_stmt('UPDATE attendance_requests SET status = "cancelled", cancelled_at = NOW(), current_approver_role = NULL WHERE id = ?', [$id]);
+execute_stmt('INSERT INTO attendance_approval_logs (attendance_request_id, approver_id, approver_role, action, comment) VALUES (?, ?, ?, ?, ?)', [$id, $_SESSION['user']['id'], $_SESSION['user']['role'], 'cancelled', 'ผู้ใช้ยกเลิกคำขอ']);
+set_flash('success', 'ยกเลิกคำขอเรียบร้อย');
+redirect_to('attendance_view.php?id=' . $id);
+
