@@ -6,6 +6,14 @@ enforce_password_change();
 $leaveTypes = fetch_all('SELECT * FROM leave_types WHERE is_active = 1 ORDER BY id');
 $defaultAcademicYearBe = current_academic_year_be();
 $error = '';
+$form = [
+    'leave_type_id' => '',
+    'academic_year_be' => (string)$defaultAcademicYearBe,
+    'start_date' => '',
+    'end_date' => '',
+    'reason' => '',
+    'contact_during_leave' => '',
+];
 
 if (is_post()) {
     verify_csrf();
@@ -18,9 +26,19 @@ if (is_post()) {
     $action = (string)($_POST['action'] ?? 'draft');
     $leaveType = fetch_one('SELECT * FROM leave_types WHERE id = ?', [$leaveTypeId]);
     $totalDays = ($startDate && $endDate) ? calculate_days($startDate, $endDate) : 0;
+    $form = [
+        'leave_type_id' => (string)$leaveTypeId,
+        'academic_year_be' => (string)$academicYearBe,
+        'start_date' => $startDate,
+        'end_date' => $endDate,
+        'reason' => $reason,
+        'contact_during_leave' => $contact,
+    ];
 
     if (!$leaveType || !$startDate || !$endDate || $totalDays <= 0 || $reason === '') {
         $error = 'กรุณากรอกข้อมูลใบลาให้ครบถ้วนและตรวจสอบวันที่';
+    } elseif ($overlap = overlapping_leave_request((int)$_SESSION['user']['id'], $startDate, $endDate)) {
+        $error = 'มีใบลาในวันที่เลือกแล้ว: ' . $overlap['request_no'] . ' (' . $overlap['leave_type_name'] . ') วันที่ ' . thai_date($overlap['start_date']) . ' - ' . thai_date($overlap['end_date']);
     } elseif (($uploadError = validate_upload($_FILES['attachment'] ?? [])) !== null) {
         $error = $uploadError;
     } elseif ($leaveType['requires_attachment_days'] !== null && $totalDays >= (float)$leaveType['requires_attachment_days'] && empty($_FILES['attachment']['name'])) {
@@ -63,7 +81,7 @@ require __DIR__ . '/includes/header.php';
             <label class="form-label" for="leave_type_id">ประเภทการลา</label>
             <select class="form-input" id="leave_type_id" name="leave_type_id" required>
                 <option value="">เลือกประเภทการลา</option>
-                <?php foreach ($leaveTypes as $type): ?><option value="<?= (int)$type['id'] ?>"><?= e($type['name']) ?></option><?php endforeach; ?>
+                <?php foreach ($leaveTypes as $type): ?><option value="<?= (int)$type['id'] ?>" <?= (int)$form['leave_type_id'] === (int)$type['id'] ? 'selected' : '' ?>><?= e($type['name']) ?></option><?php endforeach; ?>
             </select>
         </div>
         <div>
@@ -72,23 +90,23 @@ require __DIR__ . '/includes/header.php';
         </div>
         <div>
             <label class="form-label" for="academic_year_be">ปีการศึกษา</label>
-            <input class="form-input" id="academic_year_be" name="academic_year_be" type="number" min="2400" max="2700" value="<?= e((string)$defaultAcademicYearBe) ?>" required>
+            <input class="form-input" id="academic_year_be" name="academic_year_be" type="number" min="2400" max="2700" value="<?= e($form['academic_year_be']) ?>" required>
         </div>
         <div>
             <label class="form-label" for="start_date">วันที่เริ่มลา</label>
-            <input class="form-input" id="start_date" name="start_date" type="date" required>
+            <input class="form-input" id="start_date" name="start_date" type="date" value="<?= e($form['start_date']) ?>" required>
         </div>
         <div>
             <label class="form-label" for="end_date">วันที่สิ้นสุด</label>
-            <input class="form-input" id="end_date" name="end_date" type="date" required>
+            <input class="form-input" id="end_date" name="end_date" type="date" value="<?= e($form['end_date']) ?>" required>
         </div>
         <div class="md:col-span-2">
             <label class="form-label" for="reason">เหตุผลการลา</label>
-            <textarea class="form-input" id="reason" name="reason" rows="4" required></textarea>
+            <textarea class="form-input" id="reason" name="reason" rows="4" required><?= e($form['reason']) ?></textarea>
         </div>
         <div class="md:col-span-2">
             <label class="form-label" for="contact_during_leave">ที่อยู่/เบอร์ติดต่อระหว่างลา</label>
-            <input class="form-input" id="contact_during_leave" name="contact_during_leave">
+            <input class="form-input" id="contact_during_leave" name="contact_during_leave" value="<?= e($form['contact_during_leave']) ?>">
         </div>
     </div>
     <?php if ($error): ?><div class="mt-5 rounded bg-rose-50 p-3 text-sm text-rose-700"><?= e($error) ?></div><?php endif; ?>

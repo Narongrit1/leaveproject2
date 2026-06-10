@@ -1,0 +1,1 @@
+user|a:12:{s:8:"leave_id";i:1;s:10:"request_no";s:17:"L2026060617024182";s:7:"user_id";i:1;s:13:"leave_type_id";i:1;s:16:"academic_year_be";i:2568;s:10:"start_date";s:10:"2026-06-03";s:8:"end_date";s:10:"2026-06-04";s:2:"id";i:1;s:9:"full_name";s:33:"ผู้ดูแลระบบ";s:4:"role";s:5:"admin";s:13:"department_id";i:1;s:20:"must_change_password";i:0;}csrf_token|s:10:"test-token";

@@ -12,6 +12,7 @@ if (!$years) {
 $academicRoles = ['lecturer', 'head_department', 'dean', 'vice_dean', 'assistant_dean'];
 $currentUser = current_user();
 $role = $currentUser['role'] ?? '';
+$canSelectTeacher = can_manage_all() || in_array($role, ['dean', 'vice_dean', 'assistant_dean', 'head_department'], true);
 $teacherWhere = 'u.is_active = 1 AND u.role IN ("lecturer","head_department","dean","vice_dean","assistant_dean")';
 $teacherParams = [];
 if ($role === 'head_department') {
@@ -86,14 +87,14 @@ foreach ($rows as $index => $row) {
     $standardColors[] = 'rgba(148, 163, 184, 0.24)';
     $totalUsed += $used;
     $totalStandard += $standard;
-    if (in_array($row['code'] ?? '', ['sick', 'personal', 'vacation'], true)) {
-        $summaryCards[(string)$row['code']] = [
-            'name' => (string)$row['name'],
-            'used' => $used,
-            'standard' => $standard,
-            'color' => $color,
-        ];
-    }
+    $summaryCards[] = [
+        'name' => (string)$row['name'],
+        'used' => $used,
+        'standard' => $standard,
+        'remaining' => max(0, $standard - $used),
+        'percent' => $standard > 0 ? min(999, round(($used / $standard) * 100, 1)) : 0,
+        'color' => $color,
+    ];
     $tableRows[] = [
         'name' => (string)$row['name'],
         'used' => $used,
@@ -123,29 +124,33 @@ require __DIR__ . '/includes/header.php';
                 <?php endforeach; ?>
             </select>
         </div>
-        <div>
-            <label class="form-label" for="teacher_id">อาจารย์</label>
-            <select class="form-input w-64" id="teacher_id" name="teacher_id">
-                <option value="0">อาจารย์ทั้งหมด</option>
-                <?php foreach ($teacherOptions as $teacher): ?>
-                    <option value="<?= (int)$teacher['id'] ?>" <?= (int)$teacher['id'] === $selectedTeacherId ? 'selected' : '' ?>><?= e($teacher['full_name']) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
+        <?php if ($canSelectTeacher): ?>
+            <div>
+                <label class="form-label" for="teacher_id">อาจารย์</label>
+                <select class="form-input w-64" id="teacher_id" name="teacher_id">
+                    <option value="0">อาจารย์ทั้งหมด</option>
+                    <?php foreach ($teacherOptions as $teacher): ?>
+                        <option value="<?= (int)$teacher['id'] ?>" <?= (int)$teacher['id'] === $selectedTeacherId ? 'selected' : '' ?>><?= e($teacher['full_name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        <?php endif; ?>
         <button class="btn btn-primary" type="submit"><i data-lucide="filter" class="h-4 w-4"></i>แสดงผล</button>
     </form>
 </section>
 
-<div class="mb-6 grid gap-4 md:grid-cols-3">
-    <?php $summaryLabels = ['sick' => 'จำนวนวันลาป่วย', 'personal' => 'จำนวนวันลากิจ', 'vacation' => 'จำนวนวันลาพักร้อน']; ?>
-    <?php foreach (['sick', 'personal', 'vacation'] as $code): ?>
-        <?php $card = $summaryCards[$code] ?? ['name' => $code, 'used' => 0, 'standard' => 0, 'color' => '#2563eb']; ?>
+<div class="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <?php foreach ($summaryCards as $card): ?>
         <div class="leave-summary-card rounded p-5 text-white shadow-sm" style="--summary-color: <?= e($card['color']) ?>">
-            <div class="text-sm font-medium opacity-90"><?= e($summaryLabels[$code]) ?></div>
+            <div class="text-sm font-medium opacity-90"><?= e($card['name']) ?></div>
             <div class="mt-2 text-3xl font-semibold"><?= e((string)round((float)$card['used'], 2)) ?> วัน</div>
             <div class="mt-2 text-sm opacity-85">มาตรฐาน <?= e((string)round((float)$card['standard'], 2)) ?> วัน</div>
+            <div class="mt-1 text-sm opacity-85">คงเหลือ <?= e((string)round((float)$card['remaining'], 2)) ?> วัน · <?= e((string)$card['percent']) ?>%</div>
         </div>
     <?php endforeach; ?>
+    <?php if (!$summaryCards): ?>
+        <div class="rounded bg-white p-5 text-center text-slate-500 shadow-sm md:col-span-2 xl:col-span-4">ไม่พบข้อมูลประเภทการลา</div>
+    <?php endif; ?>
 </div>
 
 <div class="grid gap-6 xl:grid-cols-[1.35fr_0.9fr]">

@@ -1,0 +1,1 @@
+user|a:5:{s:2:"id";i:1;s:9:"full_name";s:33:"ผู้ดูแลระบบ";s:4:"role";s:5:"admin";s:13:"department_id";i:1;s:20:"must_change_password";i:0;}csrf_token|s:10:"test-token";

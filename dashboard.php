@@ -85,43 +85,18 @@ $latestAttendance = fetch_all(
     array_merge([$academicYearBe], $scopeParams)
 );
 
-$ownUsedRows = fetch_all(
-    'SELECT lr.leave_type_id, COALESCE(SUM(lr.total_days), 0) AS used_days
-     FROM leave_requests lr
-     WHERE lr.user_id = ?
-       AND lr.academic_year_be = ?
-       AND lr.status IN ("approved", "hr_recorded")
-     GROUP BY lr.leave_type_id',
-    [(int)$user['id'], $academicYearBe]
-);
-$ownUsedByType = [];
-foreach ($ownUsedRows as $row) {
-    $ownUsedByType[(int)$row['leave_type_id']] = (float)$row['used_days'];
-}
-
-$ownLeaveRows = fetch_all(
-    'SELECT lt.id, lt.name, lt.code, lt.color, COALESCE(e.entitled_days, 0) AS entitled_days
-     FROM leave_types lt
-     LEFT JOIN leave_type_entitlements e ON e.leave_type_id = lt.id AND e.academic_year_be = ?
-     WHERE lt.is_active = 1
-     ORDER BY lt.id',
-    [$academicYearBe]
-);
-$ownLeaveSummary = [];
-foreach ($ownLeaveRows as $row) {
-    $used = $ownUsedByType[(int)$row['id']] ?? 0.0;
-    $entitled = (float)$row['entitled_days'];
-    $ownLeaveSummary[] = [
-        'name' => (string)$row['name'],
-        'code' => (string)($row['code'] ?? ''),
-        'color' => trim((string)($row['color'] ?? '')) ?: '#2563eb',
-        'used' => $used,
-        'entitled' => $entitled,
-        'remaining' => max(0, $entitled - $used),
-    ];
-}
-
-$statusList = ['draft', 'pending_head', 'pending_dean', 'approved', 'rejected', 'cancelled', 'hr_recorded'];
+$dashboardStatusCards = [
+    'draft' => ['icon' => 'file-pen-line', 'color' => '#64748b', 'bg' => '#f1f5f9', 'label' => 'รายการใบลา'],
+    'pending_head' => ['icon' => 'clock-3', 'color' => '#d97706', 'bg' => '#fffbeb', 'label' => 'รายการใบลา'],
+    'pending_dean' => ['icon' => 'hourglass', 'color' => '#ea580c', 'bg' => '#fff7ed', 'label' => 'รายการใบลา'],
+    'approved' => ['icon' => 'circle-check', 'color' => '#059669', 'bg' => '#ecfdf5', 'label' => 'รายการใบลา'],
+];
+$attendanceStatusCards = [
+    'pending_head' => ['icon' => 'clock-3', 'color' => '#ca8a04', 'bg' => '#fefce8'],
+    'pending_dean' => ['icon' => 'user-check', 'color' => '#7c3aed', 'bg' => '#f5f3ff'],
+    'approved' => ['icon' => 'badge-check', 'color' => '#0284c7', 'bg' => '#f0f9ff'],
+    'hr_recorded' => ['icon' => 'archive-check', 'color' => '#0f766e', 'bg' => '#f0fdfa'],
+];
 $pageTitle = 'Dashboard';
 require __DIR__ . '/includes/header.php';
 ?>
@@ -151,39 +126,17 @@ require __DIR__ . '/includes/header.php';
 </section>
 
 <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-    <?php foreach (['draft', 'pending_head', 'pending_dean', 'approved'] as $status): ?>
-        <div class="dashboard-stat-card rounded bg-white p-5 shadow-sm">
+    <?php foreach ($dashboardStatusCards as $status => $card): ?>
+        <div class="dashboard-stat-card rounded bg-white p-5 shadow-sm" style="--stat-color: <?= e($card['color']) ?>; --stat-bg: <?= e($card['bg']) ?>;">
             <div class="flex items-center justify-between">
                 <div class="text-sm text-slate-500"><?= e(status_label($status)) ?></div>
-                <span class="stat-icon"><i data-lucide="file-text" class="h-5 w-5 text-blue-600"></i></span>
+                <span class="stat-icon"><i data-lucide="<?= e($card['icon']) ?>" class="h-5 w-5"></i></span>
             </div>
             <div class="mt-3 text-3xl font-semibold"><?= (int)($leaveCounts[$status] ?? 0) ?></div>
-            <div class="mt-1 text-sm text-slate-500">รายการใบลา</div>
+            <div class="mt-1 text-sm text-slate-500"><?= e($card['label']) ?></div>
         </div>
     <?php endforeach; ?>
 </div>
-
-<section class="data-panel mt-6 rounded bg-white shadow-sm">
-    <div class="panel-header border-b border-slate-200 px-5 py-4">
-        <h2 class="font-semibold">Dashboard การลาของฉัน</h2>
-        <p class="mt-1 text-sm text-slate-500">สรุปสิทธิ์และวันที่ใช้จริงในปีการศึกษา <?= e((string)$academicYearBe) ?></p>
-    </div>
-    <div class="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-4">
-        <?php foreach ($ownLeaveSummary as $row): ?>
-            <div class="rounded border border-slate-200 p-4">
-                <div class="flex items-center gap-2">
-                    <span class="inline-block h-3 w-3 rounded-full" style="background: <?= e($row['color']) ?>"></span>
-                    <div class="font-medium"><?= e($row['name']) ?></div>
-                </div>
-                <div class="mt-3 text-2xl font-semibold"><?= e((string)round($row['used'], 2)) ?> วัน</div>
-                <div class="mt-1 text-sm text-slate-500">สิทธิ์ <?= e((string)round($row['entitled'], 2)) ?> วัน · คงเหลือ <?= e((string)round($row['remaining'], 2)) ?> วัน</div>
-            </div>
-        <?php endforeach; ?>
-        <?php if (!$ownLeaveSummary): ?>
-            <div class="py-8 text-center text-slate-500 md:col-span-2 xl:col-span-4">ยังไม่มีข้อมูลสิทธิ์การลา</div>
-        <?php endif; ?>
-    </div>
-</section>
 
 <div class="mt-6 grid gap-6 xl:grid-cols-2">
     <section class="data-panel rounded bg-white shadow-sm">
@@ -250,9 +203,12 @@ require __DIR__ . '/includes/header.php';
         <h2 class="font-semibold">สรุปใบรับรองเวลา</h2>
     </div>
     <div class="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-4">
-        <?php foreach (['pending_head', 'pending_dean', 'approved', 'hr_recorded'] as $status): ?>
-            <div class="rounded border border-slate-200 p-4">
-                <div class="text-sm text-slate-500"><?= e(status_label($status)) ?></div>
+        <?php foreach ($attendanceStatusCards as $status => $card): ?>
+            <div class="dashboard-stat-card rounded bg-white p-4 shadow-sm" style="--stat-color: <?= e($card['color']) ?>; --stat-bg: <?= e($card['bg']) ?>;">
+                <div class="flex items-center justify-between">
+                    <div class="text-sm text-slate-500"><?= e(status_label($status)) ?></div>
+                    <span class="stat-icon"><i data-lucide="<?= e($card['icon']) ?>" class="h-5 w-5"></i></span>
+                </div>
                 <div class="mt-2 text-2xl font-semibold"><?= (int)($attendanceCounts[$status] ?? 0) ?></div>
                 <div class="mt-1 text-sm text-slate-500">รายการใบรับรองเวลา</div>
             </div>

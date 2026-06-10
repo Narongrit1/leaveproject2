@@ -9,6 +9,7 @@ $reportWhere = $scopeSql . ' AND lr.academic_year_be = ?';
 $reportParams = array_merge($scopeParams, [$academicYearBe]);
 $byStatus = fetch_all('SELECT lr.status, COUNT(*) total, SUM(lr.total_days) days FROM leave_requests lr JOIN users u ON u.id = lr.user_id WHERE ' . $reportWhere . ' GROUP BY lr.status', $reportParams);
 $byType = fetch_all('SELECT lt.name, COUNT(*) total, SUM(lr.total_days) days FROM leave_requests lr JOIN users u ON u.id = lr.user_id JOIN leave_types lt ON lt.id = lr.leave_type_id WHERE ' . $reportWhere . ' GROUP BY lt.id, lt.name ORDER BY lt.id', $reportParams);
+$role = current_user()['role'] ?? '';
 $pageTitle = 'รายงานสรุปการลา';
 require __DIR__ . '/includes/header.php';
 ?>
@@ -19,7 +20,10 @@ require __DIR__ . '/includes/header.php';
         <button class="btn btn-secondary" type="submit"><i data-lucide="filter" class="h-4 w-4"></i>กรอง</button>
     </form>
     <a class="btn btn-secondary" href="report_leave_individual.php">รายบุคคล</a>
-    <a class="btn btn-secondary" href="report_hr_summary.php">HR Summary</a>
+    <a class="btn btn-secondary" href="report_leave_teacher_table.php">ตารางสรุปอาจารย์</a>
+    <?php if (in_array($role, ['admin', 'hr', 'dean', 'vice_dean', 'assistant_dean'], true)): ?>
+        <a class="btn btn-secondary" href="report_hr_summary.php">HR Summary</a>
+    <?php endif; ?>
     <a class="btn btn-secondary" href="export_leave_csv.php"><i data-lucide="download" class="h-4 w-4"></i>CSV</a>
 </div>
 <div class="grid gap-6 lg:grid-cols-2">

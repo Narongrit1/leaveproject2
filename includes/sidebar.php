@@ -3,13 +3,13 @@ $user = current_user();
 $role = $user['role'] ?? '';
 $items = [
     ['href' => 'dashboard.php', 'icon' => 'layout-dashboard', 'label' => 'Dashboard', 'roles' => []],
-    ['href' => 'leave_dashboard.php', 'icon' => 'bar-chart-3', 'label' => 'Dashboard สรุปการลา', 'roles' => ['admin', 'hr', 'dean', 'vice_dean', 'assistant_dean', 'head_department']],
+    ['href' => 'leave_dashboard.php', 'icon' => 'bar-chart-3', 'label' => 'Dashboard สรุปการลา', 'roles' => ['admin', 'hr', 'dean', 'vice_dean', 'assistant_dean', 'head_department', 'lecturer']],
     ['href' => 'leave_create.php', 'icon' => 'file-plus-2', 'label' => 'ยื่นใบลา', 'roles' => []],
     ['href' => 'leave_list.php', 'icon' => 'files', 'label' => 'รายการใบลา', 'roles' => []],
     ['href' => 'attendance_create.php', 'icon' => 'clipboard-plus', 'label' => 'ยื่นใบรับรองเวลา', 'roles' => []],
     ['href' => 'attendance_list.php', 'icon' => 'clipboard-list', 'label' => 'รายการใบรับรองเวลา', 'roles' => []],
-    ['href' => 'leave_calendar.php', 'icon' => 'calendar-days', 'label' => 'ปฏิทินการลา', 'roles' => ['admin', 'hr', 'dean', 'vice_dean', 'assistant_dean', 'head_department']],
-    ['href' => 'report_leave_summary.php', 'icon' => 'bar-chart-3', 'label' => 'รายงาน', 'roles' => ['admin', 'hr', 'dean', 'vice_dean', 'assistant_dean', 'head_department']],
+    ['href' => 'leave_calendar.php', 'icon' => 'calendar-days', 'label' => 'ปฏิทินการลา', 'roles' => ['admin', 'hr', 'dean', 'vice_dean', 'assistant_dean', 'head_department', 'lecturer']],
+    ['href' => 'report_leave_summary.php', 'icon' => 'bar-chart-3', 'label' => 'รายงาน', 'roles' => ['admin', 'hr', 'dean', 'vice_dean', 'assistant_dean', 'head_department', 'lecturer']],
     ['href' => 'users_list.php', 'icon' => 'users', 'label' => 'จัดการผู้ใช้', 'roles' => ['admin']],
     ['href' => 'approval_workflows.php', 'icon' => 'git-branch', 'label' => 'ลำดับการอนุมัติ', 'roles' => ['admin']],
     ['href' => 'departments_list.php', 'icon' => 'building-2', 'label' => 'ภาควิชา', 'roles' => ['admin']],

@@ -315,6 +315,9 @@ form.rounded.bg-white,
 .dashboard-stat-card {
     position: relative;
     overflow: hidden;
+    background:
+        linear-gradient(180deg, var(--stat-bg, #eff6ff), #ffffff 46%),
+        #ffffff;
     transition: transform 150ms ease, box-shadow 150ms ease;
 }
 
@@ -322,7 +325,7 @@ form.rounded.bg-white,
     position: absolute;
     inset: 0 0 auto;
     height: 3px;
-    background: linear-gradient(90deg, #1d4ed8, #14b8a6, #f59e0b);
+    background: var(--stat-color, #1d4ed8);
     content: "";
 }
 
@@ -337,7 +340,8 @@ form.rounded.bg-white,
     height: 2.25rem;
     place-items: center;
     border-radius: 8px;
-    background: #eff6ff;
+    background: var(--stat-bg, #eff6ff);
+    color: var(--stat-color, #2563eb);
 }
 
 .panel-header {
@@ -359,6 +363,45 @@ table tbody tr:hover {
 
 table a {
     text-underline-offset: 3px;
+}
+
+.leave-report-sheet {
+    background: #fffde7;
+    color: #1f2933;
+    font-family: "Angsana New", "AngsanaUPC", "Tahoma", serif;
+}
+
+.leave-report-table {
+    border-collapse: collapse;
+    border: 2px solid #334155;
+}
+
+.leave-report-table th,
+.leave-report-table td {
+    border: 1px solid #334155;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.leave-report-table thead th {
+    font-weight: 700;
+}
+
+.leave-report-table th span {
+    display: block;
+    font-size: 0.82em;
+    font-weight: 500;
+}
+
+.leave-report-table .leave-date-cell {
+    min-width: 9.5rem;
+}
+
+.leave-report-table .leave-reason-cell {
+    max-width: 10rem;
+    min-width: 10rem;
+    text-align: left;
+    white-space: normal;
 }
 
 .login-screen {

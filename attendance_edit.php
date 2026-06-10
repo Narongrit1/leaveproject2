@@ -17,6 +17,7 @@ $reasonOptions = [
     'other' => 'อื่น ๆ พร้อมระบุ',
 ];
 $error = '';
+$form = $row;
 
 if (is_post()) {
     verify_csrf();
@@ -28,6 +29,16 @@ if (is_post()) {
     $reasonType = null;
     $otherReason = null;
     $reason = '';
+    $form = array_merge($row, [
+        'academic_year_be' => $academicYearBe,
+        'request_type' => $requestType,
+        'work_date' => (string)($_POST['work_date'] ?? ''),
+        'absent_date' => (string)($_POST['absent_date'] ?? ''),
+        'makeup_date' => (string)($_POST['makeup_date'] ?? ''),
+        'reason_type' => (string)($_POST['reason_type'] ?? ''),
+        'other_reason' => trim((string)($_POST['other_reason'] ?? '')),
+        'reason' => trim((string)($_POST['swap_reason'] ?? '')),
+    ]);
 
     if (!in_array($requestType, ['time_record', 'workday_swap'], true)) {
         $requestType = 'time_record';
@@ -50,6 +61,13 @@ if (is_post()) {
         }
     }
 
+    $checkDates = $requestType === 'time_record' ? [$workDate] : [$absentDate, $makeupDate];
+    if ($error === '' && ($attendanceOverlap = overlapping_attendance_request((int)$_SESSION['user']['id'], $checkDates, $id))) {
+        $error = 'มีใบรับรองเวลาในวันที่เลือกแล้ว: ' . $attendanceOverlap['request_no'];
+    } elseif ($error === '' && ($leaveOverlap = overlapping_leave_on_dates((int)$_SESSION['user']['id'], $checkDates))) {
+        $error = 'วันที่เลือกตรงกับใบลาแล้ว: ' . $leaveOverlap['request_no'] . ' (' . $leaveOverlap['leave_type_name'] . ') วันที่ ' . thai_date($leaveOverlap['start_date']) . ' - ' . thai_date($leaveOverlap['end_date']);
+    }
+
     if ($error === '') {
         execute_stmt(
             'UPDATE attendance_requests SET academic_year_be=?, request_type=?, work_date=?, absent_date=?, makeup_date=?, reason_type=?, other_reason=?, start_time=NULL, end_time=NULL, reason=? WHERE id=?',
@@ -60,15 +78,15 @@ if (is_post()) {
     }
 }
 
-$requestType = $row['request_type'] ?? 'time_record';
-$reasonType = $row['reason_type'] ?? 'forgot_check_in';
+$requestType = $form['request_type'] ?? 'time_record';
+$reasonType = $form['reason_type'] ?? 'forgot_check_in';
 $pageTitle = 'แก้ไขใบรับรองเวลา';
 require __DIR__ . '/includes/header.php';
 ?>
 <form method="post" class="rounded bg-white p-6 shadow-sm attendance-form">
     <?= csrf_field() ?>
     <div class="grid gap-5 md:grid-cols-2">
-        <div class="md:col-span-2"><label class="form-label">ปีการศึกษา</label><input class="form-input" name="academic_year_be" type="number" min="2400" max="2700" value="<?= e((string)($row['academic_year_be'] ?? current_academic_year_be())) ?>" required></div>
+        <div class="md:col-span-2"><label class="form-label">ปีการศึกษา</label><input class="form-input" name="academic_year_be" type="number" min="2400" max="2700" value="<?= e((string)($form['academic_year_be'] ?? current_academic_year_be())) ?>" required></div>
 
         <section class="request-section md:col-span-2" data-section="time_record">
             <div class="request-section-header">
@@ -81,7 +99,7 @@ require __DIR__ . '/includes/header.php';
                 </label>
             </div>
             <div class="request-group-controls grid gap-5 md:grid-cols-2">
-                <div><label class="form-label">วันที่ปฏิบัติการ</label><input class="form-input" name="work_date" type="date" value="<?= e($row['work_date'] ?? '') ?>"></div>
+                <div><label class="form-label">วันที่ปฏิบัติการ</label><input class="form-input" name="work_date" type="date" value="<?= e($form['work_date'] ?? '') ?>"></div>
                 <fieldset>
                     <legend class="form-label">สาเหตุ</legend>
                     <div class="reason-radio-list">
@@ -94,7 +112,7 @@ require __DIR__ . '/includes/header.php';
                 </fieldset>
                 <div class="md:col-span-2" data-other-reason>
                     <label class="form-label">ระบุสาเหตุอื่น</label>
-                    <input class="form-input" name="other_reason" value="<?= e($row['other_reason'] ?? '') ?>">
+                    <input class="form-input" name="other_reason" value="<?= e($form['other_reason'] ?? '') ?>">
                 </div>
             </div>
         </section>
@@ -110,9 +128,9 @@ require __DIR__ . '/includes/header.php';
                 </label>
             </div>
             <div class="request-group-controls grid gap-5 md:grid-cols-2">
-                <div><label class="form-label">วันที่ไม่มาปฏิบัติงาน</label><input class="form-input" name="absent_date" type="date" value="<?= e($row['absent_date'] ?? '') ?>"></div>
-                <div><label class="form-label">วันที่มาปฏิบัติงาน</label><input class="form-input" name="makeup_date" type="date" value="<?= e($row['makeup_date'] ?? '') ?>"></div>
-                <div class="md:col-span-2"><label class="form-label">เหตุผล</label><textarea class="form-input" name="swap_reason" rows="4"><?= e($requestType === 'workday_swap' ? $row['reason'] : '') ?></textarea></div>
+                <div><label class="form-label">วันที่ไม่มาปฏิบัติงาน</label><input class="form-input" name="absent_date" type="date" value="<?= e($form['absent_date'] ?? '') ?>"></div>
+                <div><label class="form-label">วันที่มาปฏิบัติงาน</label><input class="form-input" name="makeup_date" type="date" value="<?= e($form['makeup_date'] ?? '') ?>"></div>
+                <div class="md:col-span-2"><label class="form-label">เหตุผล</label><textarea class="form-input" name="swap_reason" rows="4"><?= e($requestType === 'workday_swap' ? ($form['reason'] ?? '') : '') ?></textarea></div>
             </div>
         </section>
     </div>

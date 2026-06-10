@@ -355,6 +355,76 @@ function generate_request_no(string $prefix): string
     return $prefix . date('YmdHis') . random_int(10, 99);
 }
 
+function overlapping_leave_request(int $userId, string $startDate, string $endDate, int $excludeId = 0): ?array
+{
+    if ($userId <= 0 || $startDate === '' || $endDate === '') {
+        return null;
+    }
+
+    $sql = 'SELECT lr.id, lr.request_no, lr.start_date, lr.end_date, lr.status, lt.name AS leave_type_name
+            FROM leave_requests lr
+            JOIN leave_types lt ON lt.id = lr.leave_type_id
+            WHERE lr.user_id = ?
+              AND lr.status NOT IN ("rejected", "cancelled")
+              AND lr.start_date <= ?
+              AND lr.end_date >= ?';
+    $params = [$userId, $endDate, $startDate];
+
+    if ($excludeId > 0) {
+        $sql .= ' AND lr.id <> ?';
+        $params[] = $excludeId;
+    }
+
+    $sql .= ' ORDER BY lr.start_date ASC LIMIT 1';
+    return fetch_one($sql, $params);
+}
+
+function overlapping_attendance_request(int $userId, array $dates, int $excludeId = 0): ?array
+{
+    $dates = array_values(array_filter(array_unique($dates), static fn($date) => is_string($date) && $date !== ''));
+    if ($userId <= 0 || !$dates) {
+        return null;
+    }
+
+    $datePlaceholders = implode(',', array_fill(0, count($dates), '?'));
+    $sql = 'SELECT id, request_no, request_type, work_date, absent_date, makeup_date, status
+            FROM attendance_requests
+            WHERE user_id = ?
+              AND status NOT IN ("rejected", "cancelled")
+              AND (
+                  work_date IN (' . $datePlaceholders . ')
+                  OR absent_date IN (' . $datePlaceholders . ')
+                  OR makeup_date IN (' . $datePlaceholders . ')
+              )';
+    $params = array_merge([$userId], $dates, $dates, $dates);
+
+    if ($excludeId > 0) {
+        $sql .= ' AND id <> ?';
+        $params[] = $excludeId;
+    }
+
+    $sql .= ' ORDER BY created_at ASC LIMIT 1';
+    return fetch_one($sql, $params);
+}
+
+function overlapping_leave_on_dates(int $userId, array $dates): ?array
+{
+    $dates = array_values(array_filter(array_unique($dates), static fn($date) => is_string($date) && $date !== ''));
+    if ($userId <= 0 || !$dates) {
+        return null;
+    }
+
+    $dateConditions = implode(' OR ', array_fill(0, count($dates), '? BETWEEN lr.start_date AND lr.end_date'));
+    $sql = 'SELECT lr.id, lr.request_no, lr.start_date, lr.end_date, lr.status, lt.name AS leave_type_name
+            FROM leave_requests lr
+            JOIN leave_types lt ON lt.id = lr.leave_type_id
+            WHERE lr.user_id = ?
+              AND lr.status NOT IN ("rejected", "cancelled")
+              AND (' . $dateConditions . ')
+            ORDER BY lr.start_date ASC LIMIT 1';
+    return fetch_one($sql, array_merge([$userId], $dates));
+}
+
 function can_view_user_record(array $owner): bool
 {
     $current = current_user();

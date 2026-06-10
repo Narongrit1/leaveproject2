@@ -11,6 +11,16 @@ $reasonOptions = [
     'other' => 'อื่น ๆ พร้อมระบุ',
 ];
 $error = '';
+$form = [
+    'academic_year_be' => (string)$defaultAcademicYearBe,
+    'request_type' => 'time_record',
+    'work_date' => '',
+    'absent_date' => '',
+    'makeup_date' => '',
+    'reason_type' => 'forgot_check_in',
+    'other_reason' => '',
+    'swap_reason' => '',
+];
 
 if (is_post()) {
     verify_csrf();
@@ -23,6 +33,16 @@ if (is_post()) {
     $reasonType = null;
     $otherReason = null;
     $reason = '';
+    $form = [
+        'academic_year_be' => (string)$academicYearBe,
+        'request_type' => $requestType,
+        'work_date' => (string)($_POST['work_date'] ?? ''),
+        'absent_date' => (string)($_POST['absent_date'] ?? ''),
+        'makeup_date' => (string)($_POST['makeup_date'] ?? ''),
+        'reason_type' => (string)($_POST['reason_type'] ?? 'forgot_check_in'),
+        'other_reason' => trim((string)($_POST['other_reason'] ?? '')),
+        'swap_reason' => trim((string)($_POST['swap_reason'] ?? '')),
+    ];
 
     if (!in_array($requestType, ['time_record', 'workday_swap'], true)) {
         $requestType = 'time_record';
@@ -43,6 +63,13 @@ if (is_post()) {
         if (!$absentDate || !$makeupDate || $reason === '') {
             $error = 'กรุณากรอกวันที่ไม่มาปฏิบัติงาน วันที่มาปฏิบัติงาน และเหตุผลให้ครบถ้วน';
         }
+    }
+
+    $checkDates = $requestType === 'time_record' ? [$workDate] : [$absentDate, $makeupDate];
+    if ($error === '' && ($attendanceOverlap = overlapping_attendance_request((int)$_SESSION['user']['id'], $checkDates))) {
+        $error = 'มีใบรับรองเวลาในวันที่เลือกแล้ว: ' . $attendanceOverlap['request_no'];
+    } elseif ($error === '' && ($leaveOverlap = overlapping_leave_on_dates((int)$_SESSION['user']['id'], $checkDates))) {
+        $error = 'วันที่เลือกตรงกับใบลาแล้ว: ' . $leaveOverlap['request_no'] . ' (' . $leaveOverlap['leave_type_name'] . ') วันที่ ' . thai_date($leaveOverlap['start_date']) . ' - ' . thai_date($leaveOverlap['end_date']);
     }
 
     if ($error === '') {
@@ -68,13 +95,13 @@ require __DIR__ . '/includes/header.php';
     <div class="grid gap-5 md:grid-cols-2">
         <div class="md:col-span-2">
             <label class="form-label" for="academic_year_be">ปีการศึกษา</label>
-            <input class="form-input" id="academic_year_be" name="academic_year_be" type="number" min="2400" max="2700" value="<?= e((string)$defaultAcademicYearBe) ?>" required>
+            <input class="form-input" id="academic_year_be" name="academic_year_be" type="number" min="2400" max="2700" value="<?= e($form['academic_year_be']) ?>" required>
         </div>
 
         <section class="request-section md:col-span-2" data-section="time_record">
             <div class="request-section-header">
                 <label class="request-group-radio">
-                    <input type="radio" name="request_type" value="time_record" checked>
+                    <input type="radio" name="request_type" value="time_record" <?= $form['request_type'] === 'time_record' ? 'checked' : '' ?>>
                     <span>
                         <strong>ขออนุมัติบันทึกเวลาการมาปฏิบัติงาน</strong>
                         <small>กรอกวันที่ปฏิบัติการและเลือกสาเหตุการขอบันทึกเวลา</small>
@@ -84,21 +111,21 @@ require __DIR__ . '/includes/header.php';
             <div class="request-group-controls grid gap-5 md:grid-cols-2">
                 <div>
                     <label class="form-label" for="work_date">วันที่ปฏิบัติการ</label>
-                    <input class="form-input" id="work_date" name="work_date" type="date">
+                    <input class="form-input" id="work_date" name="work_date" type="date" value="<?= e($form['work_date']) ?>">
                 </div>
                 <fieldset>
                     <legend class="form-label">สาเหตุ</legend>
                     <div class="reason-radio-list">
                         <?php foreach ($reasonOptions as $value => $label): ?>
                             <div class="reason-radio-item">
-                                <label class="radio-row"><input type="radio" name="reason_type" value="<?= e($value) ?>" <?= $value === 'forgot_check_in' ? 'checked' : '' ?>><?= e($label) ?></label>
+                                <label class="radio-row"><input type="radio" name="reason_type" value="<?= e($value) ?>" <?= $form['reason_type'] === $value ? 'checked' : '' ?>><?= e($label) ?></label>
                             </div>
                         <?php endforeach; ?>
                     </div>
                 </fieldset>
                 <div class="md:col-span-2" data-other-reason>
                     <label class="form-label" for="other_reason">ระบุสาเหตุอื่น</label>
-                    <input class="form-input" id="other_reason" name="other_reason">
+                    <input class="form-input" id="other_reason" name="other_reason" value="<?= e($form['other_reason']) ?>">
                 </div>
             </div>
         </section>
@@ -106,7 +133,7 @@ require __DIR__ . '/includes/header.php';
         <section class="request-section md:col-span-2" data-section="workday_swap">
             <div class="request-section-header">
                 <label class="request-group-radio">
-                    <input type="radio" name="request_type" value="workday_swap">
+                    <input type="radio" name="request_type" value="workday_swap" <?= $form['request_type'] === 'workday_swap' ? 'checked' : '' ?>>
                     <span>
                         <strong>สลับวันทำงาน</strong>
                         <small>กรอกวันที่ไม่มาปฏิบัติงาน วันที่มาปฏิบัติงานทดแทน และเหตุผล</small>
@@ -116,15 +143,15 @@ require __DIR__ . '/includes/header.php';
             <div class="request-group-controls grid gap-5 md:grid-cols-2">
                 <div>
                     <label class="form-label" for="absent_date">วันที่ไม่มาปฏิบัติงาน</label>
-                    <input class="form-input" id="absent_date" name="absent_date" type="date">
+                    <input class="form-input" id="absent_date" name="absent_date" type="date" value="<?= e($form['absent_date']) ?>">
                 </div>
                 <div>
                     <label class="form-label" for="makeup_date">วันที่มาปฏิบัติงาน</label>
-                    <input class="form-input" id="makeup_date" name="makeup_date" type="date">
+                    <input class="form-input" id="makeup_date" name="makeup_date" type="date" value="<?= e($form['makeup_date']) ?>">
                 </div>
                 <div class="md:col-span-2">
                     <label class="form-label" for="swap_reason">เหตุผล</label>
-                    <textarea class="form-input" id="swap_reason" name="swap_reason" rows="4"></textarea>
+                    <textarea class="form-input" id="swap_reason" name="swap_reason" rows="4"><?= e($form['swap_reason']) ?></textarea>
                 </div>
             </div>
         </section>
